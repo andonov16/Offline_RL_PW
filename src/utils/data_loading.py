@@ -1,5 +1,6 @@
 import numpy as np
 
+
 def load_data(data_path: str = '../data/replay_buffer.npz') -> tuple:
     """
     Loads data from a saved replay buffer file in NumPy .npz format.

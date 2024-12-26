@@ -19,7 +19,8 @@ def plot_hist(data_dict: dict, num_columns: int = 2, f_size: tuple = (16,9)) -> 
     fig.tight_layout()
     
     # return fig
-    
+
+
 def plot_hexbin(data_dict: dict, num_columns: int = 2, f_size: tuple = (16,9)) -> plt.figure:
     num_rows = int(np.ceil(len(data_dict.keys())/num_columns))
     
@@ -31,8 +32,7 @@ def plot_hexbin(data_dict: dict, num_columns: int = 2, f_size: tuple = (16,9)) -
     
     x_min, x_max = all_x.min(), all_x.max()
     y_min, y_max = all_y.min(), all_y.max()
-    
-    
+
     for ax, data_name in zip(axes, data_dict.keys()):
         ax.set_title('Hexboin map: '+ data_name)
         ax.set_ylabel('y')
@@ -46,7 +46,7 @@ def plot_hexbin(data_dict: dict, num_columns: int = 2, f_size: tuple = (16,9)) -
     
     fig.tight_layout()
     
-    # return fig
+    return fig
     
     
 def plot_kde_density(data_dict: dict, num_columns: int = 2, f_size: tuple = (16, 9)) -> plt.figure:
@@ -64,4 +64,4 @@ def plot_kde_density(data_dict: dict, num_columns: int = 2, f_size: tuple = (16,
     
     fig.tight_layout()
     
-    # return fig
+    return fig
