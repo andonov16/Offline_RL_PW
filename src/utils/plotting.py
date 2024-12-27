@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 
 
-def plot_hist(data_dict: dict, num_columns: int = 2, f_size: tuple = (16,9)) -> plt.figure:
+def plot_hist(data_dict: dict, num_columns: int = 2, f_size: tuple = (16, 9)) -> plt.figure:
     num_rows = int(np.ceil(len(data_dict.keys())/num_columns))
     
     fig, axes = plt.subplots(ncols=num_columns, nrows=num_rows, figsize=f_size)
@@ -18,7 +18,7 @@ def plot_hist(data_dict: dict, num_columns: int = 2, f_size: tuple = (16,9)) -> 
     
     fig.tight_layout()
     
-    # return fig
+    return fig
 
 
 def plot_hexbin(data_dict: dict, num_columns: int = 2, f_size: tuple = (16,9)) -> plt.figure:

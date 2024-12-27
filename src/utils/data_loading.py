@@ -4,7 +4,7 @@ from typing import Tuple
 
 from torch.utils.data import DataLoader
 from sklearn.model_selection import train_test_split
-from src.Datasets import BCDataset
+from src.datasets import BCDataset
 
 
 def load_data(data_path: str = '../data/replay_buffer.npz') -> Tuple[np.array, np.array, np.array, np.array, np.array]:
