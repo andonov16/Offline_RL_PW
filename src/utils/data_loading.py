@@ -1,5 +1,6 @@
 import numpy as np
 import os
+import pandas as pd
 from typing import Tuple
 
 from torch.utils.data import DataLoader
@@ -40,6 +41,42 @@ def load_data(data_path: str = '../data/replay_buffer.npz') -> Tuple[np.array, n
         actions = np.squeeze(actions, axis=2)
         
     return observations, next_observations, actions, rewards, dones
+
+
+def load_data_as_df(observations : np.array, next_observations: np.array, actions: np.array,
+                rewards: np.array, dones) -> pd.DataFrame:
+    data = {
+        'X': observations[:, 0],
+        'Y': observations[:, 1],
+        'lv_X': observations[:, 2],
+        'lv_Y': observations[:, 3],
+        'angle': observations[:, 4],
+        'angular_velocity': observations[:, 5],
+        'leg_1': observations[:, 6],
+        'leg_2': observations[:, 7],
+        'action': actions.flatten(),
+        'reward': rewards.flatten(),
+        'done': dones.flatten(),
+        'next_X': next_observations[:, 0],
+        'next_Y': next_observations[:, 1],
+        'next_lv_X': next_observations[:, 2],
+        'next_lv_Y': next_observations[:, 3],
+        'next_angle': next_observations[:, 4],
+        'next_angular_velocity': next_observations[:, 5],
+        'next_leg_1': next_observations[:, 6],
+        'next_leg_2': next_observations[:, 7],
+    }
+    data_df = pd.DataFrame(data)
+    
+    for column in data_df.columns:
+        if column in ['done', 'leg_1', 'leg_2', 'next_leg_1', 'next_leg_2']:
+            data_df[column] = data_df[column].astype('bool')
+        elif 'action' in column:
+            data_df[column] = data_df[column].astype('int')
+        else:
+            data_df[column] = data_df[column].astype('float64')
+    
+    return data_df
 
 
 def get_BC_data_loaders(train: float = 0.70,

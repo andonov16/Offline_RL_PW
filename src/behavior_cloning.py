@@ -23,7 +23,6 @@ class BC(torch.nn.Module):
 
         # Combine the layers into a container
         self.network = torch.nn.Sequential(*layers)
-        pass
 
     def __forward__(self, x: torch.Tensor) -> torch.Tensor:
         return self.network(x)
