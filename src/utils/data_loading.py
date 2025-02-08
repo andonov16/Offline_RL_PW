@@ -104,3 +104,14 @@ def get_BC_data_loaders(train: float = 0.70,
     valid_loader = DataLoader(valid_dataset, batch_size=batch_size, shuffle=False)
 
     return train_loader, test_loader, valid_loader
+
+
+def get_legs_df(df: pd.DataFrame) -> pd.DataFrame:
+    leg_1, leg_2 = df[['leg_1']], df[['leg_2']]
+    both_legs = (leg_1.to_numpy() & leg_2.to_numpy()).flatten()
+    both_legs = pd.Series(both_legs).reset_index(drop=True)
+    
+    
+    result_df = pd.concat([leg_1, leg_2, both_legs], axis=1)
+    result_df.columns = ['leg_1', 'leg_2', 'both_legs']
+    return result_df

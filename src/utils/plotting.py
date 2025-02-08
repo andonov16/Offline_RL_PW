@@ -52,7 +52,6 @@ def _plot_hist_multiple_axes(data_dict: dict, num_columns: int = 2, f_size: tupl
     return fig
 
 
-
 def plot_hexbin(data_dict: dict, num_columns: int = 2, f_size: tuple = (16,9)) -> plt.Figure:
     num_rows = int(np.ceil(len(data_dict.keys())/num_columns))
     
@@ -75,24 +74,6 @@ def plot_hexbin(data_dict: dict, num_columns: int = 2, f_size: tuple = (16,9)) -
         ax.set_ylim(y_min, y_max)
         
         fig.colorbar(hb, ax=ax, orientation='vertical')
-    
-    fig.tight_layout()
-    
-    return fig
-    
-    
-def plot_kde_density(data_dict: dict, num_columns: int = 2, f_size: tuple = (16, 9)) -> plt.Figure:
-    num_rows = int(np.ceil(len(data_dict.keys()) / num_columns))
-    
-    fig, axes = plt.subplots(ncols=num_columns, nrows=num_rows, figsize=f_size)
-    axes = axes.flatten()
-    
-    for ax, (data_name, data) in tqdm(zip(axes, data_dict.items())):
-        ax.set_title(f'KDE plot: {data_name}')
-        ax.set_xlabel('x')
-        ax.set_ylabel('y')
-        
-        sns.kdeplot(data, ax=ax, fill=True, thresh=0.1)
     
     fig.tight_layout()
     
@@ -142,5 +123,82 @@ def plot_boxplots_compare_df(df1_name: str, df2_name: str, df1: pd.DataFrame, df
         else:
             df_merged.boxplot(column=[df1_name+'_'+column, df2_name+'_'+column], **boxplot_kwargs)
         axes[i].set_title(f'Boxplot of {column}')
+    fig.tight_layout()
+    return fig
+
+def is_continuous(series):
+    return pd.api.types.is_numeric_dtype(series) and series.nunique() > 10 
+
+
+def plot_univariate_analysis(df1: pd.DataFrame, df2: pd.DataFrame, df1_name: str = 'Dataset 1',
+        df2_name: str = 'Dataset 2', num_columns=3, custom_title='Univariate Analysis', f_size: tuple = (18, 21),
+        kde_kwargs: dict = {}, hist_kwargs: dict = {}) -> plt.Figure:
+    num_rows = int(np.ceil(len(df1.columns)*3/num_columns))
+    
+    fig, axes = plt.subplots(ncols=num_columns, nrows=num_rows, figsize=f_size)
+    axes = axes.flatten()
+    
+    df1_renamed = df1.rename(columns={col: f"{df1_name}_{col}" for col in df1.columns})
+    df2_renamed = df2.rename(columns={col: f"{df2_name}_{col}" for col in df2.columns})
+    df_merged = pd.concat([df1_renamed, df2_renamed], axis=1)
+    
+    if custom_title is None:
+        fig.suptitle(f'Univariate Analysis')
+    else:
+        fig.suptitle(custom_title)
+    
+    i = 0
+    for column in df1.columns:
+        if is_continuous(df_merged[df1_name + '_' + column]) and is_continuous(df_merged[df2_name + '_' + column]):
+            df1[[column]].plot(kind="kde", ax=axes[i], **kde_kwargs)
+            axes[i].set_title(f'KDE: {column} ({df2_name} only)')
+            i += 1
+            df2[[column]].plot(kind="kde", ax=axes[i], **kde_kwargs)
+            axes[i].set_title(f'KDE: {column} ({df2_name} only)')
+            i += 1
+            df_merged[[df1_name + '_' + column, df2_name + '_' + column]].plot(kind="kde", ax=axes[i], **kde_kwargs)
+            axes[i].set_title(f'KDE: {column} (both datasets)')
+            i += 1
+        else:
+            df1[[column]].plot(kind="hist", ax=axes[i], **hist_kwargs)
+            axes[i].set_title(f'Histogram: {column} ({df2_name} only)')
+            i += 1
+            
+            df2[[column]].plot(kind='hist', ax=axes[i], **hist_kwargs)
+            axes[i].set_title(f'Histogram: {column} ({df2_name} only)')
+            i += 1
+            
+            df_merged[[df1_name + '_' + column, df2_name + '_' + column]].plot(kind="hist", ax=axes[i], **hist_kwargs)
+            axes[i].set_title(f'Histogram: {column} (both datasets)')
+        axes[i].set_xlabel('Values')
+        
+    fig.tight_layout()
+    return fig
+
+
+def plot_legs_bar(df1: pd.DataFrame, df2: pd.DataFrame, df1_name: str = 'Dataset 1', df2_name: str = 'Dataset 2',
+        custom_title: str = 'Barchart', f_size: tuple = (16,6), bar_kwargs: dict = {}) -> plt.Figure:
+    fig, axes = plt.subplots(ncols=3, nrows=1, figsize=f_size)
+    axes = axes.flatten()
+    
+    df1_counts = df1.apply(lambda x: x.sum()) 
+    df2_counts = df2.apply(lambda x: x.sum()) 
+    
+    fig.suptitle(custom_title)
+    
+    axes[0].bar(df1_counts.index, df1_counts.values, **bar_kwargs)
+    axes[0].set_title(f'Legs statistics: {df1_name}')
+    axes[0].set_ylabel('times touched the ground')
+    
+    axes[1].bar(df2_counts.index, df2_counts.values, **bar_kwargs)
+    axes[1].set_title(f'Legs statistics: {df2_name}')
+    axes[1].set_ylabel('times touched the ground')
+    
+    bars1 = axes[2].bar(df1_counts.index, df1_counts.values, **bar_kwargs)
+    bars2 = axes[2].bar(df2_counts.index, df2_counts.values, **bar_kwargs)
+    axes[2].set_title('Legs statistics: (both)')
+    axes[2].legend([bars1, bars2], [df1_name, df2_name]) 
+    axes[1].set_ylabel('times touched the ground')
+    
     fig.tight_layout()
     return fig
