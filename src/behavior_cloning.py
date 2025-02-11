@@ -24,5 +24,5 @@ class BC(torch.nn.Module):
         # Combine the layers into a container
         self.network = torch.nn.Sequential(*layers)
 
-    def __forward__(self, x: torch.Tensor) -> torch.Tensor:
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.network(x)

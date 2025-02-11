@@ -1,86 +1,103 @@
-from typing import Tuple
 from tqdm import tqdm
+from torch.utils.tensorboard import SummaryWriter
 
 import torch
+import copy
+import os
+import sys
 from torch.utils.data import DataLoader
 from src.behavior_cloning import BC
 
+project_root = os.path.abspath(os.path.join(os.path.dirname("__file__"), ".."))
+if project_root not in sys.path:
+    sys.path.append(project_root)
 
-def training_loop(
-        network: BC,
-        train_loader: torch.utils.data.DataLoader,
-        eval_loader: torch.utils.data.DataLoader,
-        max_epochs: int,
-        device: torch.device,
-        loss_func: callable = torch.nn.MSELoss(),
-        show_progress: bool = True,
-        learning_rate: float = 0.001,
-        weight_decay: float = 1e-5) -> Tuple[list, list, torch.nn.Module, float]:
-    train_losses = list()
-    eval_losses = list()
-    optimizer = torch.optim.Adam(network.parameters(),
-                                 lr=learning_rate,
-                                 weight_decay=weight_decay)
 
-    enumerator = range(max_epochs)
-    if show_progress:
-        enumerator = tqdm(enumerator, desc='Training ...')
-    for epoch_num in enumerator:
-        curr_train_losses = list()
-        curr_eval_losses = list()
+def train_and_evaluate(train_loader: DataLoader, val_loader: DataLoader, optimizer: torch.optim.Optimizer,
+                       model: torch.nn.Module,
+                       early_stop_epoch_without_improvement: int = 3,
+                       loss_function: callable = torch.nn.CrossEntropyLoss(), epochs=6, log_subfolder: str = 'logs'):
+    tensorboard_log_subfolder = os.path.join(log_subfolder, 'tensorboard')
+    if not os.path.exists(log_subfolder):
+        os.makedirs(log_subfolder)
+    if not os.path.exists(tensorboard_log_subfolder):
+        os.makedirs(tensorboard_log_subfolder)
+    log_writer = SummaryWriter(log_dir=tensorboard_log_subfolder)
 
-        # set the network to training mode
-        network.train()
-        for observations, actions in train_loader:
-            observations = observations.float().to(device)
-            actions = actions.to(device)
+    # add the model architecture as a graph
+    sample_state_batch, _ = next(iter(train_loader))
+    log_writer.add_graph(model, sample_state_batch)
 
-            output = network(observations)
+    best_model_path, best_val_loss, best_model_valid_accuracy, epochs_without_improvement = None, float('inf'), -1.0, 0
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model.to(device)
+    train_losses, valid_losses = [], []
+
+    for epoch in tqdm(range(epochs), desc='Epochs'):
+        model.train()
+        correct_train, total_train, train_loss = 0, 0, 0.0
+
+        for inputs, labels in train_loader:
+            inputs, labels = inputs.to(device), labels.to(device)
             optimizer.zero_grad()
-            loss = loss_func(output, actions)
+            outputs = model(inputs)
+            loss = loss_function(outputs, labels)
             loss.backward()
             optimizer.step()
-            optimizer.zero_grad()
 
-            curr_train_losses.append(loss)
+            train_loss += loss.item()
+            _, predicted = torch.max(outputs.data, 1)
+            total_train += labels.size(0)
+            correct_train += (predicted == labels).sum().item()
 
-        network.eval()
-        for observations, actions in eval_loader:
-            observations = observations.float().to(device)
-            actions = actions.to(device)
+        train_accuracy = correct_train / total_train
+        avg_train_loss = train_loss / len(train_loader)
 
-            output = network(observations)
-            loss = loss_func(output, actions)
-            curr_eval_losses.append(loss)
+        log_writer.add_scalar("Loss/Train", avg_train_loss, epoch)
+        log_writer.add_scalar("Accuracy/Train", train_accuracy, epoch)
 
-        if epoch_num > 3 and time_for_early_stopping(eval_losses):
+        model.eval()
+        correct_val, total_val, valid_loss = 0, 0, 0.0
+        with torch.no_grad():
+            for inputs, labels in val_loader:
+                inputs, labels = inputs.to(device), labels.to(device)
+                outputs = model(inputs)
+                loss = loss_function(outputs, labels)
+                valid_loss += loss.item()
+
+                _, predicted = torch.max(outputs.data, 1)
+                total_val += labels.size(0)
+                correct_val += (predicted == labels).sum().item()
+
+        val_accuracy = correct_val / total_val
+        avg_valid_loss = valid_loss / len(val_loader)
+
+        log_writer.add_scalar("Loss/Valid", avg_valid_loss, epoch)
+        log_writer.add_scalar("Accuracy/Valid", val_accuracy, epoch)
+
+        # average loss per batch
+        train_losses.append(train_loss / len(train_loader))
+        valid_losses.append(valid_loss / len(val_loader))
+
+        # early stopping:
+        if valid_loss < best_val_loss:
+            # best performing model here, save it:
+            best_model_path = os.path.join(log_subfolder, f"best_model.pt")
+            torch.save(model.state_dict(), best_model_path)
+            print(f"Best model saved at epoch {epoch + 1} with validation loss: {valid_loss / len(val_loader):.4f}")
+            epochs_without_improvement = 0
+            best_val_loss = valid_loss
+            best_model_valid_accuracy = val_accuracy
+        else:
+            epochs_without_improvement += 1
+
+        if epochs_without_improvement >= early_stop_epoch_without_improvement:
             break
 
-    eval_accuracy = calculate_accuracy(network, eval_loader)
-    return train_losses, eval_losses, network, eval_accuracy
+    log_writer.flush()
+    log_writer.close()
 
-
-def calculate_accuracy(model: torch.nn.Module, eval_loader: DataLoader, device: torch.device) -> float:
-    model.eval()
-    correct = 0
-    total = 0
-
-    with torch.no_grad():
-        for observations, actions in eval_loader:
-            observations = observations.float().to(device)
-            actions = actions.to(device)
-
-            outputs = model(observations)
-            _, predicted = torch.max(outputs, 1)
-            total += actions.size(0)
-            correct += (predicted == actions).sum().item()
-
-    accuracy = correct / total * 100
-    return accuracy
-
-
-def time_for_early_stopping(eval_losses: list) -> bool:
-    for i in range(1, 4):
-        if eval_losses[-i].item() <= min([l.item() for l in eval_losses[::-3]]):
-            return False
-    return True
+    best_model = copy.deepcopy(model)
+    best_model.load_state_dict(torch.load(best_model_path, map_location=device))
+    return best_model, best_model_valid_accuracy
