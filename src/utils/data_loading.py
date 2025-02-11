@@ -79,14 +79,14 @@ def load_data_as_df(observations : np.array, next_observations: np.array, action
     return data_df
 
 
-def get_BC_data_loaders(train: float = 0.70,
+def get_BC_data_loaders(observations: np.array, actions: np.array,
+                        train: float = 0.70,
                         test: float = 0.15,
                         validation: float = 0.15,
                         batch_size: int = 32,
                         seed: int = 16) -> Tuple[DataLoader, DataLoader, DataLoader]:
     assert abs(train + test + validation - 1.0) < 1e-5, 'Data splits must add up to 1.'
 
-    observations, _, actions, _, _ = load_data()
     np.random.seed(seed)
     test_to_valid_ratio = test / (test + validation)
 
