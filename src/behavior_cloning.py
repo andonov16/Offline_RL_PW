@@ -8,7 +8,7 @@ class BC(torch.nn.Module):
                  num_hidden_layers: int,
                  out_neurons: int,
                  activation_function: torch.nn.Module = torch.nn.ReLU()):
-        super().__init__()
+        super(BC, self).__init__()
 
         # Add the first (input) layer + activation function
         layers = [torch.nn.Linear(input_neurons, hidden_neurons),
