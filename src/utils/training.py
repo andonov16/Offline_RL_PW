@@ -8,33 +8,38 @@ import sys
 from torch.utils.data import DataLoader
 from src.behavior_cloning import BC
 
-project_root = os.path.abspath(os.path.join(os.path.dirname("__file__"), ".."))
-if project_root not in sys.path:
-    sys.path.append(project_root)
-
 
 def train_and_evaluate(train_loader: DataLoader, val_loader: DataLoader, optimizer: torch.optim.Optimizer,
                        model: torch.nn.Module,
                        early_stop_epoch_without_improvement: int = 3,
-                       loss_function: callable = torch.nn.CrossEntropyLoss(), epochs=6, log_subfolder: str = 'logs'):
+                       loss_function: callable = torch.nn.CrossEntropyLoss(), epochs=6, log_subfolder: str = 'logs',
+                       tensorboard_subfolder: str = 'my_model',
+                       show_progress: bool = True):
     tensorboard_log_subfolder = os.path.join(log_subfolder, 'tensorboard')
+    tensorboard_log_subfolder = os.path.join(tensorboard_log_subfolder, tensorboard_subfolder)
     if not os.path.exists(log_subfolder):
         os.makedirs(log_subfolder)
     if not os.path.exists(tensorboard_log_subfolder):
         os.makedirs(tensorboard_log_subfolder)
     log_writer = SummaryWriter(log_dir=tensorboard_log_subfolder)
 
-    # add the model architecture as a graph
-    sample_state_batch, _ = next(iter(train_loader))
-    log_writer.add_graph(model, sample_state_batch)
-
-    best_model_path, best_val_loss, best_model_valid_accuracy, epochs_without_improvement = None, float('inf'), -1.0, 0
-
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
+
+    sample_batch = iter(train_loader)
+    sample_states, _ = next(sample_batch)
+    sample_actions = sample_states.to(device)
+
+    log_writer.add_graph(model, sample_actions)
+
+    best_model_path, best_val_loss, best_model_valid_accuracy, epochs_without_improvement = None, float('inf'), -1.0, 0
     train_losses, valid_losses = [], []
 
-    for epoch in tqdm(range(epochs), desc='Epochs'):
+    itterator = range(epochs)
+    if show_progress:
+        itterator = tqdm(itterator, desc='Epochs')
+
+    for epoch in itterator:
         model.train()
         correct_train, total_train, train_loss = 0, 0, 0.0
 
@@ -83,9 +88,8 @@ def train_and_evaluate(train_loader: DataLoader, val_loader: DataLoader, optimiz
         # early stopping:
         if valid_loss < best_val_loss:
             # best performing model here, save it:
-            best_model_path = os.path.join(log_subfolder, f"best_model.pt")
+            best_model_path = os.path.join(log_subfolder, f"curr_best_model.pt")
             torch.save(model.state_dict(), best_model_path)
-            print(f"Best model saved at epoch {epoch + 1} with validation loss: {valid_loss / len(val_loader):.4f}")
             epochs_without_improvement = 0
             best_val_loss = valid_loss
             best_model_valid_accuracy = val_accuracy
