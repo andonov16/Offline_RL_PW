@@ -1,9 +1,8 @@
 import os
-import sys
 import json
 
 
-def create_bc_config_file(bc_config_file_path: str = 'D:/University/5th_Semester/Practical_Work_in_AI/Offline_RL_PW/config/bc_config.json') -> None:
+def create_bc_config_file(bc_config_file_path: str = '../config/bc_config.json') -> None:
     config_dir = os.path.dirname(bc_config_file_path)
     if not os.path.exists(config_dir):
         os.makedirs(config_dir)
@@ -26,10 +25,10 @@ def create_bc_config_file(bc_config_file_path: str = 'D:/University/5th_Semester
     }
 
     with open(bc_config_file_path, 'w') as f:
-        json.dump(bc_config_dict, f, indent=4)
+        json.dump(bc_config_dict, f, indent=3)
 
 
-def load_bc_config_file(bc_config_file_path: str = 'D:/University/5th_Semester/Practical_Work_in_AI/Offline_RL_PW/config/bc_config.json') -> dict:
+def load_bc_config_file(bc_config_file_path: str = '../config/bc_config.json') -> dict:
     if not os.path.exists(bc_config_file_path):
         create_bc_config_file(bc_config_file_path)
 
@@ -39,9 +38,26 @@ def load_bc_config_file(bc_config_file_path: str = 'D:/University/5th_Semester/P
     return bc_config_dict
 
 
-if __name__ =='__main__':
-    project_root = os.path.abspath(os.path.join(os.path.dirname("__file__"), "../../"))
-    if project_root not in sys.path:
-        sys.path.append(project_root)
-    bc_config_hyperparams = load_bc_config_file()
-    print(bc_config_hyperparams)
+def create_env_test_config_file(env_test_config_path: str = '../config/env_test_config.json') -> None:
+    config_dir = os.path.dirname(env_test_config_path)
+    if not os.path.exists(config_dir):
+        os.makedirs(config_dir)
+
+    env_test_config_dict = {
+        'seed': 16,
+        'num_episodes': 1000
+    }
+
+    with open(env_test_config_path, 'w') as f:
+        json.dump(env_test_config_dict, f, indent=3)
+
+
+def load_env_test_config_file(env_test_config_path: str = '../config/env_test_config.json') -> dict:
+    if not os.path.exists(env_test_config_path):
+        create_env_test_config_file(env_test_config_path)
+
+    with open(env_test_config_path, 'r') as f:
+        bc_config_dict = json.load(f)
+
+    return bc_config_dict
+
