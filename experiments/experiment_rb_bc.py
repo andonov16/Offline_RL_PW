@@ -61,8 +61,7 @@ best_BC_model, best_valid_accuracy = train_and_evaluate(train_loader=train_loade
                                                         val_loader=valid_loader,
                                                         model=BC_model,
                                                         optimizer=optimizer,
-                                                        early_stop_epoch_without_improvement=best_hyperparams[
-                                                            'early_stop_epoch_without_improvement'],
+                                                        early_stop_epoch_without_improvement=best_hyperparams['early_stop_epoch_without_improvement'],
                                                         loss_function=torch.nn.CrossEntropyLoss(),
                                                         epochs=100,
                                                         log_subfolder=hyperparams['log_subfolder'],
