@@ -6,10 +6,10 @@ from src.utils.config_managing import *
 from src.utils.training import *
 from src.behavior_cloning import BC
 
-# 1. import the config dict
+# import the corresponding config dict
 bc_config_dict = load_bc_config_file('../config/rb_bc_config.json')
 
-# 2. Get Data Loaders
+# get Data Loaders
 rb_observations, rb_next_observations, rb_actions, rb_rewards, rb_dones = load_data()
 
 train_loader, test_loader, valid_loader = get_BC_data_loaders(observations=rb_observations,
@@ -20,15 +20,14 @@ train_loader, test_loader, valid_loader = get_BC_data_loaders(observations=rb_ob
                                                               batch_size=bc_config_dict['batch_size'],
                                                               seed=bc_config_dict['seed'])
 
-# 3. Itterate trough all possible hyperparams:
+# generate all possible hyperparameter combinations using grid search
 for key, value in bc_config_dict.items():
     if not isinstance(value, list):
         bc_config_dict[key] = [bc_config_dict[key]]
-
 keys, values = zip(*bc_config_dict.items())
 grid_search_itters = [dict(zip(keys, v)) for v in product(*values)]
 
-# 4. Apply grid search to find the best model (save the best hyperparams and accuracy)
+# apply grid search to find the best hyperparameter combination (save the best hyperparams and accuracy)
 best_model, best_valid_accuracy, best_hyperparams = None, -1, None
 for hyperparams in tqdm(grid_search_itters, desc='Grid Search'):
     BC_model = BC(input_neurons=hyperparams['input_neurons'],
@@ -52,11 +51,13 @@ for hyperparams in tqdm(grid_search_itters, desc='Grid Search'):
                                                            f'lr={hyperparams["lr"]}_wd={hyperparams["weight_decay"]}_hidden_neurons={hyperparams["hidden_neurons"]}_num_hidden_layers={hyperparams["num_hidden_layers"]}'),
                                                        show_progress=False)
 
+    # update the best model if the current configuration has higher validation accuracy
     if curr_valid_accuracy > best_valid_accuracy:
         best_hyperparams = hyperparams
         best_model = BC_model
         best_valid_accuracy = curr_valid_accuracy
 
+# train the final model with the best hyperparameter combination
 best_BC_model, best_valid_accuracy = train_and_evaluate(train_loader=train_loader,
                                                         val_loader=valid_loader,
                                                         model=BC_model,
@@ -69,7 +70,7 @@ best_BC_model, best_valid_accuracy = train_and_evaluate(train_loader=train_loade
                                                             f'lr={best_hyperparams["lr"]}_wd={best_hyperparams["weight_decay"]}_hidden_neurons={hyperparams["hidden_neurons"]}_num_hidden_layers={hyperparams["num_hidden_layers"]}'),
                                                         show_progress=False)
 
-# 5. Compute test accuracy
+# compute the test accuracy
 best_model.eval()
 correct, total = 0, 0
 with torch.no_grad():
@@ -81,7 +82,7 @@ with torch.no_grad():
 
 best_test_accuracy = correct / total
 
-# 6. Save the best model
+# save the best model as a file
 model_save_path = "../models"
 if not os.path.exists(model_save_path):
     os.mkdir(model_save_path)
@@ -89,7 +90,7 @@ model_save_path = os.path.join(model_save_path, 'rb_BC_best_model.pth')
 
 torch.save(best_model.state_dict(), model_save_path)
 
-# 7. Save the best hyperparameters and accuracies
+# save the best hyperparameters and accuracies
 log_file_path = os.path.join(best_hyperparams['log_subfolder'], "best_hyperparams.txt")
 
 with open(log_file_path, "w") as f:

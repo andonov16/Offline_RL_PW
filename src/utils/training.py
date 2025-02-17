@@ -4,9 +4,7 @@ from torch.utils.tensorboard import SummaryWriter
 import torch
 import copy
 import os
-import sys
 from torch.utils.data import DataLoader
-from src.behavior_cloning import BC
 
 
 def train_and_evaluate(train_loader: DataLoader, val_loader: DataLoader, optimizer: torch.optim.Optimizer,
@@ -14,7 +12,27 @@ def train_and_evaluate(train_loader: DataLoader, val_loader: DataLoader, optimiz
                        early_stop_epoch_without_improvement: int = 3,
                        loss_function: callable = torch.nn.CrossEntropyLoss(), epochs=6, log_subfolder: str = 'logs',
                        tensorboard_subfolder: str = 'my_model',
-                       show_progress: bool = True):
+                       show_progress: bool = True) -> tuple:
+    """
+        Trains and evaluates a given PyTorch model using the provided data loaders.
+
+        Accepts:
+            train_loader (DataLoader): the DataLoader for the training dataset
+            val_loader (DataLoader): the DataLoader for the validation dataset
+            optimizer (torch.optim.Optimizer): optimizer for training
+            model (torch.nn.Module): PyTorch model to be trained
+            early_stop_epoch_without_improvement (int, optional): number of epochs to wait without improvement
+                before early stopping
+            loss_function (callable, optional): the loss function to be used
+            epochs (int, optional): Total number of training epochs
+            log_subfolder (str, optional): Path to store the logs
+            tensorboard_subfolder (str, optional): subfolder for TensorBoard logs
+            show_progress (bool, optional): Whether to display a progress bar using tqdm
+
+        Returns:
+            tuple: best_model (torch.nn.Module), best_model_valid_accuracy (float).
+        """
+    # creates the log (sub)folders if necessary
     tensorboard_log_subfolder = os.path.join(log_subfolder, 'tensorboard')
     tensorboard_log_subfolder = os.path.join(tensorboard_log_subfolder, tensorboard_subfolder)
     if not os.path.exists(log_subfolder):
@@ -39,10 +57,12 @@ def train_and_evaluate(train_loader: DataLoader, val_loader: DataLoader, optimiz
     if show_progress:
         itterator = tqdm(itterator, desc='Epochs')
 
+    #main training loop
     for epoch in itterator:
         model.train()
         correct_train, total_train, train_loss = 0, 0, 0.0
 
+        # update the weights
         for inputs, labels in train_loader:
             inputs, labels = inputs.to(device), labels.to(device)
             optimizer.zero_grad()
@@ -59,9 +79,11 @@ def train_and_evaluate(train_loader: DataLoader, val_loader: DataLoader, optimiz
         train_accuracy = correct_train / total_train
         avg_train_loss = train_loss / len(train_loader)
 
+        # log the train loss and accuracy using Tensorboard
         log_writer.add_scalar("Loss/Train", avg_train_loss, epoch)
         log_writer.add_scalar("Accuracy/Train", train_accuracy, epoch)
 
+        # evaluate the model after each completed training epoch on the validation set
         model.eval()
         correct_val, total_val, valid_loss = 0, 0, 0.0
         with torch.no_grad():
@@ -78,6 +100,7 @@ def train_and_evaluate(train_loader: DataLoader, val_loader: DataLoader, optimiz
         val_accuracy = correct_val / total_val
         avg_valid_loss = valid_loss / len(val_loader)
 
+        # log the train loss and accuracy using Tensorboard
         log_writer.add_scalar("Loss/Valid", avg_valid_loss, epoch)
         log_writer.add_scalar("Accuracy/Valid", val_accuracy, epoch)
 

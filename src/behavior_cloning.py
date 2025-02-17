@@ -1,7 +1,7 @@
 import torch
 
 
-# FNN model
+# Behaviour Cloning class: FNN model
 class BC(torch.nn.Module):
     def __init__(self, input_neurons: int,
                  hidden_neurons: int,
