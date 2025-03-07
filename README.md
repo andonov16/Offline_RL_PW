@@ -15,7 +15,7 @@ This project explores the performance of two Behavior Cloning (BC) agents traine
 Both BC agents are then evaluated in a live environment for 1,000 episodes each, using fixed random seed to ensure reproducibility.
 
 The performance of the models is as follows:
-| Model Type  | Test Accuracy | Reward (SD) | Reward (Mean) |
+| Model Type  | Test Accuracy | Return (SD) | Return (Mean) |
 |------------|--------------|-------------|---------------|
 | Replay Buffer BC    | 66.35%          |     478.4     |       -644.4      |
 | Final Policy BC    | 96.83%          | 107.7          | 75.49            |
