@@ -1,4 +1,4 @@
-# Offline Reinforcement Learning 
+# Offline Reinforcement Learning - Lunar Lander Behaviour Cloning
 ## Practical work in AI, WS2024/25, JKU
 # Introduction
 
